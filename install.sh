@@ -1,30 +1,33 @@
 #!/bin/bash
 # Installa Termosifoni sul Mac:
 #   - copia l'app in ~/Library/Application Support/Termosifoni
-#   - avvia il server all'accesso (LaunchAgent, solo su 127.0.0.1)
 #   - crea ~/Applications/Termosifoni.app con la sua icona
 #
+# Nessun servizio in background: aprendo Termosifoni.app parte il server,
+# che si spegne da solo 3 minuti dopo la chiusura del pannello.
+#
 # Uso:  ./install.sh [IP_CUBE]        (senza IP il Cube viene cercato in rete)
-#       ./install.sh --no-start      (installa i file senza avviare il servizio)
 set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")" && pwd)"
 PORT=8765
-LABEL="it.termosifoni.server"
+IDLE=180
+OLD_LABEL="it.termosifoni.server"            # servizio delle versioni precedenti
 BASE="$HOME/Library/Application Support/Termosifoni"
-AGENT="$HOME/Library/LaunchAgents/$LABEL.plist"
 APP="$HOME/Applications/Termosifoni.app"
 PY=/usr/bin/python3
-
-START=1; CUBE_IP=""
-for a in "$@"; do
-  case "$a" in
-    --no-start) START=0 ;;
-    *) CUBE_IP="$a" ;;
-  esac
-done
+CUBE_IP="${1:-}"
 
 "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 9))' || { echo "Serve Python 3.9 o successivo ($PY)"; exit 1; }
+
+# versioni precedenti: toglie il servizio sempre attivo
+if [ -f "$HOME/Library/LaunchAgents/$OLD_LABEL.plist" ]; then
+  echo "• Rimuovo il vecchio servizio in background"
+  launchctl bootout "gui/$(id -u)/$OLD_LABEL" >/dev/null 2>&1 || true
+  rm -f "$HOME/Library/LaunchAgents/$OLD_LABEL.plist"
+fi
+# un server già acceso con la versione vecchia va fermato prima di aggiornare i file
+pkill -f "$BASE/app/server.py" >/dev/null 2>&1 || true
 
 echo "• Copio i file in $BASE"
 mkdir -p "$BASE/app" "$BASE/data" "$BASE/logs"
@@ -33,25 +36,6 @@ cp "$SRC/server.py" "$BASE/app/"
 cp -R "$SRC/static" "$BASE/app/static"
 cp "$SRC/uninstall.sh" "$BASE/"
 chmod +x "$BASE/uninstall.sh"
-
-echo "• Creo il servizio di avvio automatico"
-mkdir -p "$(dirname "$AGENT")"
-ARGS="<string>$PY</string><string>$BASE/app/server.py</string>"
-[ -n "$CUBE_IP" ] && ARGS="$ARGS<string>$CUBE_IP</string>"
-ARGS="$ARGS<string>--port</string><string>$PORT</string><string>--data</string><string>$BASE/data</string>"
-cat > "$AGENT" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>$LABEL</string>
-  <key>ProgramArguments</key><array>$ARGS</array>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>ProcessType</key><string>Background</string>
-  <key>StandardOutPath</key><string>$BASE/logs/server.log</string>
-  <key>StandardErrorPath</key><string>$BASE/logs/server.log</string>
-</dict></plist>
-EOF
 
 echo "• Creo $APP"
 rm -rf "$APP"
@@ -66,17 +50,21 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>CFBundleExecutable</key><string>Termosifoni</string>
   <key>CFBundleIconFile</key><string>Termosifoni</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>2.0</string>
+  <key>CFBundleShortVersionString</key><string>2.1</string>
   <key>LSUIElement</key><true/>
 </dict></plist>
 EOF
 cat > "$APP/Contents/MacOS/Termosifoni" <<EOF
 #!/bin/bash
-# Si assicura che il server sia acceso e apre il pannello in una finestra dedicata.
+# Avvia il server se non è già acceso e apre il pannello in una finestra dedicata.
+# Il server si spegne da solo $IDLE secondi dopo la chiusura del pannello.
+BASE="$BASE"
 URL="http://127.0.0.1:$PORT/"
-if ! curl -fsS -m 2 "\${URL}api/state" >/dev/null 2>&1; then
-  launchctl kickstart "gui/\$(id -u)/$LABEL" >/dev/null 2>&1 || true
-  for i in \$(seq 1 20); do curl -fsS -m 1 "\${URL}api/state" >/dev/null 2>&1 && break; sleep 0.5; done
+up() { curl -fsS -m 1 "\${URL}api/ping" >/dev/null 2>&1; }
+if ! up; then
+  nohup "$PY" "\$BASE/app/server.py" $CUBE_IP --port $PORT --data "\$BASE/data" --idle-exit $IDLE \\
+    >>"\$BASE/logs/server.log" 2>&1 </dev/null &
+  for i in \$(seq 1 40); do up && break; sleep 0.25; done
 fi
 for b in "Google Chrome" "Microsoft Edge" "Brave Browser" "Chromium"; do
   if open -Ra "\$b" >/dev/null 2>&1; then exec open -na "\$b" --args --app="\$URL"; fi
@@ -96,17 +84,6 @@ iconutil -c icns "$SET" -o "$APP/Contents/Resources/Termosifoni.icns"
 rm -rf "$TMP"
 touch "$APP"
 
-if [ "$START" = 1 ]; then
-  echo "• Avvio il servizio"
-  launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
-  launchctl bootstrap "gui/$(id -u)" "$AGENT"
-  for i in $(seq 1 20); do curl -fsS -m 1 "http://127.0.0.1:$PORT/api/state" >/dev/null 2>&1 && break; sleep 0.5; done
-  if curl -fsS -m 2 "http://127.0.0.1:$PORT/api/state" >/dev/null 2>&1; then
-    echo "✓ Fatto. Apri Termosifoni da ~/Applications o da Spotlight."
-  else
-    echo "! Il servizio non risponde: guarda $BASE/logs/server.log"
-  fi
-else
-  echo "✓ File installati (servizio non avviato)."
-fi
+echo "✓ Fatto. Apri Termosifoni da ~/Applications o da Spotlight."
+echo "  Al primo avvio macOS potrebbe chiedere l'accesso alla rete locale: serve per parlare con il Cube."
 echo "  Per disinstallare: \"$BASE/uninstall.sh\""

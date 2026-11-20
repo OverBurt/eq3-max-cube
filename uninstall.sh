@@ -4,6 +4,8 @@ set -uo pipefail
 LABEL="it.termosifoni.server"
 BASE="$HOME/Library/Application Support/Termosifoni"
 
+# ferma il server se è acceso e toglie il servizio delle versioni precedenti
+pkill -f "$BASE/app/server.py" >/dev/null 2>&1 || true
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
 rm -rf "$HOME/Applications/Termosifoni.app" "$BASE/app" "$BASE/logs"

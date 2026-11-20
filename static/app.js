@@ -467,11 +467,10 @@ document.addEventListener("change", e => {
 function isoLocal(d) { const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes() < 30 ? 0 : 30)}`; }
 function roundHalf(v) { const [d, t] = v.split("T"); let [h, m] = t.split(":").map(Number); m = m < 15 ? 0 : m < 45 ? 30 : 60; if (m === 60) { h = Math.min(23, h + 1); m = 0; } return `${d}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`; }
 
-/* ---------- installazione come app */
-let installEvt = null;
-window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("#install").hidden = false; });
-$("#install").addEventListener("click", async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("#install").hidden = true; });
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => { });
+/* ---------- presenza: tiene acceso il server finché il pannello è aperto (anche ridotto a icona) */
+setInterval(() => fetch("/api/ping", { cache: "no-store" }).catch(() => { }), 30000);
+// rimuove il service worker delle versioni precedenti: senza server il pannello non serve
+if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => { });
 
 $("#refresh").addEventListener("click", () => loadState(true));
 

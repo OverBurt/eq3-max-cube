@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Termosifoni — pannello locale per eQ-3 MAX! Cube.
 
-Avvio:  python3 server.py [IP_CUBE] [--port 8765] [--data CARTELLA]
+Avvio:  python3 server.py [IP_CUBE] [--port 8765] [--data CARTELLA] [--idle-exit SECONDI]
 Poi apri http://127.0.0.1:8765
+Termosifoni.app lo avvia con --idle-exit 180: si spegne da solo quando chiudi il pannello.
 
 Solo libreria standard (Python 3.9+). Il server:
   * interroga il Cube ogni 2 minuti;
@@ -45,7 +46,7 @@ CMD_SET_TEMP = 0x40
 STATIC = Path(__file__).with_name("static")
 STATIC_TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
                 ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml",
-                ".png": "image/png", ".webmanifest": "application/manifest+json"}
+                ".png": "image/png"}
 
 
 # ====================================================================== rete
@@ -622,10 +623,18 @@ def encode_points(points):
 
 ENGINE = None
 PORT = 8765
+LAST_SEEN = time.time()        # ultima richiesta da una pagina aperta
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "Termosifoni"
+
+    def parse_request(self):
+        global LAST_SEEN
+        ok = super().parse_request()
+        if ok:
+            LAST_SEEN = time.time()
+        return ok
 
     def _send(self, code, body: bytes, ctype, cache="no-store"):
         self.send_response(code)
@@ -655,6 +664,8 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if u.path == "/api/state":
             return self._json(200, ENGINE.snapshot())
+        if u.path == "/api/ping":                 # segnale di presenza della pagina
+            return self._json(200, {"ok": True})
         name = "index.html" if u.path in ("/", "") else u.path.lstrip("/")
         f = (STATIC / name).resolve()
         if f.parent != STATIC.resolve() or not f.is_file() or f.suffix not in STATIC_TYPES:
@@ -699,12 +710,27 @@ def main():
     ap.add_argument("ip", nargs="?", help="IP del Cube (se omesso lo cerca in rete)")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--data", default=str(Path(__file__).with_name("data")), help="cartella per i dati locali")
+    ap.add_argument("--idle-exit", type=int, default=0, metavar="SECONDI",
+                    help="si spegne se nessuna pagina lo contatta per questo tempo (0 = mai)")
     a = ap.parse_args()
     PORT = a.port
     ENGINE = Engine(Store(Path(a.data) / "stato.json"), a.ip)
+    httpd = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
     threading.Thread(target=ENGINE.loop, daemon=True).start()
+    if a.idle_exit > 0:
+        threading.Thread(target=idle_watchdog, args=(httpd, a.idle_exit), daemon=True).start()
     print("Termosifoni: http://127.0.0.1:%d" % a.port, flush=True)
-    ThreadingHTTPServer(("127.0.0.1", a.port), Handler).serve_forever()
+    httpd.serve_forever()
+    print("Nessuna pagina aperta da %d s: server spento." % a.idle_exit, flush=True)
+
+
+def idle_watchdog(httpd, idle):
+    """Spegne il server quando il pannello è chiuso da `idle` secondi (mai durante un comando al Cube)."""
+    while True:
+        time.sleep(5)
+        if time.time() - LAST_SEEN > idle and ENGINE.cube_lock.acquire(blocking=False):
+            httpd.shutdown()
+            return
 
 
 if __name__ == "__main__":
