@@ -8,7 +8,7 @@ BASE="$HOME/Library/Application Support/Termosifoni"
 pkill -f "$BASE/app/server.py" >/dev/null 2>&1 || true
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
-rm -rf "$HOME/Applications/Termosifoni.app" "$BASE/app" "$BASE/logs"
+rm -rf "/Applications/Termosifoni.app" "$HOME/Applications/Termosifoni.app" "$BASE/app" "$BASE/logs"
 if [ "${1:-}" = "--tutto" ]; then
   rm -rf "$BASE"
   echo "✓ Termosifoni rimosso, dati locali compresi."

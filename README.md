@@ -57,7 +57,7 @@ L'IP è facoltativo: senza, il Cube viene cercato in rete, anche se cambia indir
 L'installer:
 
 - copia l'app in `~/Library/Application Support/Termosifoni`;
-- crea `~/Applications/Termosifoni.app`, che apre il pannello in una finestra dedicata
+- crea `Termosifoni.app` in `/Applications` (o in `~/Applications` se quella di sistema non è scrivibile), che compare nel Finder, nel Launchpad e in Spotlight e apre il pannello in una finestra dedicata
   (Chrome/Edge/Brave in modalità app, altrimenti il browser predefinito).
 
 Non resta niente acceso in background: aprendo Termosifoni.app parte il server (solo su

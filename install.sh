@@ -1,7 +1,7 @@
 #!/bin/bash
 # Installa Termosifoni sul Mac:
 #   - copia l'app in ~/Library/Application Support/Termosifoni
-#   - crea ~/Applications/Termosifoni.app con la sua icona
+#   - crea Termosifoni.app in /Applications (o ~/Applications) con la sua icona
 #
 # Nessun servizio in background: aprendo Termosifoni.app parte il server,
 # che si spegne da solo 3 minuti dopo la chiusura del pannello.
@@ -14,7 +14,8 @@ PORT=8765
 IDLE=180
 OLD_LABEL="it.termosifoni.server"            # servizio delle versioni precedenti
 BASE="$HOME/Library/Application Support/Termosifoni"
-APP="$HOME/Applications/Termosifoni.app"
+# /Applications se scrivibile (compare in Finder e Launchpad), altrimenti ~/Applications
+if [ -w /Applications ]; then APP="/Applications/Termosifoni.app"; else APP="$HOME/Applications/Termosifoni.app"; fi
 PY=/usr/bin/python3
 CUBE_IP="${1:-}"
 
@@ -39,6 +40,8 @@ chmod +x "$BASE/uninstall.sh"
 
 echo "• Creo $APP"
 rm -rf "$APP"
+# toglie la copia in ~/Applications delle versioni precedenti
+[ "$APP" != "$HOME/Applications/Termosifoni.app" ] && rm -rf "$HOME/Applications/Termosifoni.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -83,7 +86,8 @@ done
 iconutil -c icns "$SET" -o "$APP/Contents/Resources/Termosifoni.icns"
 rm -rf "$TMP"
 touch "$APP"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" >/dev/null 2>&1 || true
 
-echo "✓ Fatto. Apri Termosifoni da ~/Applications o da Spotlight."
+echo "✓ Fatto. Apri Termosifoni da $(dirname "$APP"), dal Launchpad o da Spotlight."
 echo "  Al primo avvio macOS potrebbe chiedere l'accesso alla rete locale: serve per parlare con il Cube."
 echo "  Per disinstallare: \"$BASE/uninstall.sh\""
