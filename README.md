@@ -1,7 +1,50 @@
 # Termosifoni
 
-Pannello locale per i termosifoni gestiti da un **eQ-3 MAX! Cube**: temperature,
-programmi settimanali, modalità e impostazioni, senza cloud.
+Un'app per Mac per gestire il riscaldamento con il sistema **eQ-3 MAX!**: le valvole
+termostatiche sui termosifoni, i termostati a parete e il **MAX! Cube**, il gateway LAN
+che li collega alla rete di casa.
+
+## A cosa serve
+
+Il sistema MAX! si gestiva con il software ufficiale di eQ-3 e con il portale online
+per il controllo da fuori casa. Il prodotto è fuori produzione:
+
+- il software ufficiale non è più scaricabile dal sito eQ-3, e la versione per Mac
+  richiedeva Java e versioni di macOS ormai superate;
+- il portale online è stato chiuso.
+
+Chi ha ancora un impianto MAX! funzionante si ritrova senza un modo comodo di vedere
+le temperature o cambiare i programmi. Termosifoni **sostituisce il software ufficiale
+dismesso** e permette di:
+
+- vedere a colpo d'occhio la temperatura di ogni stanza, la temperatura obiettivo e il
+  prossimo cambio di programma;
+- cambiare la temperatura e la modalità: programma, manuale, boost, vacanza;
+- modificare il programma settimanale di ogni stanza;
+- regolare le impostazioni: temperature comfort/eco, minima e massima, finestra aperta,
+  boost, anticalcare;
+- ricevere avvisi su batterie scariche e dispositivi che non rispondono.
+
+## Come funziona
+
+Termosifoni lavora **solo in rete locale**, parlando direttamente con il Cube: niente
+cloud, niente account, nessun dato che esce di casa.
+
+```
+ Mac (Termosifoni)  ──rete di casa──▶  MAX! Cube  ──radio 868 MHz──▶  valvole e termostati
+```
+
+- Il Mac deve essere sulla **stessa rete** del Cube (Wi-Fi o cavo, stesso router).
+- Il Cube viene **trovato da solo** in rete, anche se cambia indirizzo; in alternativa
+  si inserisce il suo IP.
+- Funziona con l'impianto già configurato: stanze e dispositivi sono quelli salvati nel
+  Cube. L'abbinamento di nuovi dispositivi non è supportato.
+- Non serve Internet. Da fuori casa non è raggiungibile, a meno di usare una VPN verso
+  la rete di casa.
+
+Requisiti: un Mac con Python 3.9 o successivo in `/usr/bin/python3` (lo installano gli
+strumenti da riga di comando di Xcode: se manca, macOS propone di installarli al primo uso)
+e un browser; con Chrome, Edge o Brave il pannello si apre in una finestra a sé.
 
 ## Installazione
 
