@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Termosifoni</title>
+<meta name="description" content="Temperature e programmi dei termosifoni di casa">
+<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1622" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/">Termosifoni</a>
+  <nav class="rooms-nav" id="nav" aria-label="Stanze"></nav>
+  <div class="status">
+    <button class="cube-btn" id="cube-btn" title="Cube in uso e ricerca in rete">
+      <span class="dot" id="cube-dot"></span><span id="status-text">Collegamento al Cube…</span>
+    </button>
+    <button class="icon-btn" id="refresh" title="Rileggi dal Cube" aria-label="Rileggi dal Cube">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="icon-btn install" id="install" hidden>Installa app</button>
+  </div>
+</header>
+
+<main id="view" tabindex="-1"></main>
+
+<dialog id="confirm">
+  <form method="dialog">
+    <h2 id="confirm-title"></h2>
+    <div id="confirm-body"></div>
+    <div class="actions">
+      <button value="no" class="btn">Annulla</button>
+      <button value="yes" class="btn primary" id="confirm-yes">Invia al Cube</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="cube-dlg" aria-labelledby="cube-title">
+  <h2 id="cube-title">Cube MAX!</h2>
+  <div id="cube-current" class="cube-current"></div>
+  <div class="row" style="margin-top:16px">
+    <button class="btn primary" id="cube-search">Cerca in rete</button>
+    <span class="hint" id="cube-progress"></span>
+  </div>
+  <ul class="cube-list" id="cube-list"></ul>
+  <form class="row cube-manual" id="cube-manual">
+    <label class="f" style="flex:1">Oppure inserisci l'indirizzo IP
+      <input id="cube-ip" inputmode="decimal" placeholder="192.168.1.100" autocomplete="off" spellcheck="false"></label>
+    <button class="btn">Collega</button>
+  </form>
+  <p class="err-text" id="cube-err"></p>
+  <div class="actions"><button class="btn" id="cube-close">Chiudi</button></div>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# dati locali: IP del Cube e indirizzi radio dei dispositivi
+data/
+*.tmp
+__pycache__/
+*.pyc
+.DS_Store
+.claude/
